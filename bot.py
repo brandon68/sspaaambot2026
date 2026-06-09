@@ -5,7 +5,7 @@ import json
 
 
 # ▶️ Token del bot (NO LO COMPARTAS EN PÚBLICO)
-TOKEN = "8793668537:AAFWNp-dDrPWIoB3hco3dvj3NPVRBAlAt9I"
+TOKEN = "8290258052:AAF6WfYLHuAR6tBHyqtuqWImPLQJFN2BcZk"
 bot = telebot.TeleBot(TOKEN)
 
 # 📁 Archivo donde se guardan los usuarios
