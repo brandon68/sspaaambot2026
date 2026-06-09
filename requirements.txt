@@ -1,0 +1,12 @@
+pyTelegramBotAPI==4.29.1
+requests
+aiohttp
+python-dotenv
+pytz
+openpyxl
+cloudscraper
+PySocks
+selenium
+webdriver-manager
+beautifulsoup4
+lxml
