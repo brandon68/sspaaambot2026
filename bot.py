@@ -390,18 +390,12 @@ def actualizar_creditos(user_id, cantidad):
 @bot.message_handler(commands=["sumar_creditos", "restar_creditos"])
 def modificar_creditos(message):
 
-    print("=" * 50)
-    print("ENTRO A modificar_creditos")
-    print("Mensaje:", message.text)
-    print("Message ID:", message.message_id)
-    print("Usuario:", message.from_user.id)
-    print("=" * 50)
-
     if message.from_user.id not in ADMINS:
         bot.reply_to(message, "⛔ No tienes permiso para usar este comando.")
         return
 
     partes = message.text.split()
+
     if len(partes) != 3:
         bot.reply_to(
             message,
@@ -410,77 +404,63 @@ def modificar_creditos(message):
         return
 
     objetivo = partes[1].replace("@", "")
+
     try:
         cantidad = int(partes[2])
     except ValueError:
         bot.reply_to(message, "❌ Cantidad inválida.")
         return
 
-    # Si es /restar_creditos, invertimos el valor
     if message.text.startswith("/restar_creditos"):
         cantidad = -cantidad
-
-    actualizado = False
 
     if not os.path.exists(DATA_FILE):
         bot.reply_to(message, "⚠️ No hay usuarios registrados aún.")
         return
 
-    # Leer todas las líneas
     with open(DATA_FILE, "r") as f:
         lineas = f.readlines()
 
     nuevas_lineas = []
+    actualizado = False
 
     for line in lineas:
         parts = line.strip().split(",")
+
         if len(parts) < 3:
+            nuevas_lineas.append(line)
             continue
+
         uid, uname, creditos = parts
+
         if uid == objetivo or uname.lower() == objetivo.lower():
 
-            try:
-                nuevo_credito = int(creditos) + cantidad
+            nuevo_credito = max(0, int(creditos) + cantidad)
 
-                if nuevo_credito < 0:
-                    nuevo_credito = 0
+            nuevas_lineas.append(
+                f"{uid},{uname},{nuevo_credito}\n"
+            )
 
-                nuevas_lineas.append(
-                    f"{uid},{uname},{nuevo_credito}\n"
-                )
-
-                actualizado = True
-
-            except Exception as e:
-                print(e)
-                nuevas_lineas.append(line)
+            actualizado = True
 
         else:
             nuevas_lineas.append(line)
 
-    
-        if actualizado:
+    with open(DATA_FILE, "w") as f:
+        f.writelines(nuevas_lineas)
 
-            with open(DATA_FILE, "w") as f:
-                f.writelines(nuevas_lineas)
+    if actualizado:
+        signo = "+" if cantidad > 0 else ""
 
-            signo = "+" if cantidad > 0 else ""
-
-            bot.send_message(
-                message.chat.id,
-                f"✅ Créditos actualizados ({signo}{cantidad})."
-            )
-
-            return
-
-        else:
-
-            bot.send_message(
-                message.chat.id,
-                f"❌ Usuario o ID '{objetivo}' no encontrado."
-            )
-
-            return
+        bot.send_message(
+            message.chat.id,
+            f"✅ Créditos actualizados ({signo}{cantidad})."
+        )
+    else:
+        bot.send_message(
+            message.chat.id,
+            f"❌ Usuario o ID '{objetivo}' no encontrado."
+        )
 
 
 # ===========================
