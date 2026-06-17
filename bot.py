@@ -9,7 +9,7 @@ TOKEN = "8290258052:AAF6WfYLHuAR6tBHyqtuqWImPLQJFN2BcZk"
 bot = telebot.TeleBot(TOKEN)
 
 # 📁 Archivo donde se guardan los usuarios
-DATA_FILE = "usuarios.txt"
+DATA_FILE = "/data/usuarios.txt"
 
 # 👑 Lista de administradores por ID de Telegram
 ADMINS = [5504611412]  # Reemplaza con tu ID
