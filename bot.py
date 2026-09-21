@@ -1,21 +1,18 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import os
+import json
 
-# ▶️ Token del bot
-TOKEN = "8290258052:AAF6WfYLHuAR6tBHyqtuqWImPLQJFN2BcZk"
+
+# ▶️ Token del bot (NO LO COMPARTAS EN PÚBLICO)
+TOKEN = "8290258052:AAFP5AFx2_zGOiXQTA1a2lqdbq469F-30Fg"
 bot = telebot.TeleBot(TOKEN)
 
-# 📁 Ruta persistente para el archivo de usuarios
-DATA_DIR = "/app/sspaaambot2026-volume"
-DATA_FILE = os.path.join(DATA_DIR, "usuarios.txt")
+# 📁 Archivo donde se guardan los usuarios
+DATA_FILE = "/data/usuarios.txt"
 
-# Garantizar que el directorio exista
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-# 👑 Lista de administradores
-ADMINS = [5504611412]
+# 👑 Lista de administradores por ID de Telegram
+ADMINS = [5504611412]  # Reemplaza con tu ID
 
 
 # ===========================
@@ -24,6 +21,7 @@ ADMINS = [5504611412]
 @bot.message_handler(commands=["start"])
 def send_welcome(message):
     user_id = message.from_user.id
+    username = message.from_user.username or "SinUsername"
     registrado = False
 
     if os.path.exists(DATA_FILE):
@@ -58,6 +56,7 @@ def send_welcome(message):
 @bot.callback_query_handler(func=lambda call: call.data == "registrar")
 def handle_register(call):
     bot.answer_callback_query(call.id)
+
     user_id = call.from_user.id
     username = call.from_user.username or "SinUsername"
 
@@ -72,11 +71,15 @@ def handle_register(call):
                 break
 
     if already_registered:
-        bot.send_message(call.message.chat.id, "📌 Ya estás registrado en el sistema.")
+        bot.edit_message_text("📌 Ya estás registrado en el sistema.",
+                              chat_id=call.message.chat.id,
+                              message_id=call.message.message_id)
     else:
         with open(DATA_FILE, "a") as f:
             f.write(f"{user_id},{username},0\n")
-        bot.send_message(call.message.chat.id, "🎉 Registro completado. Tienes 0 créditos.")
+        bot.edit_message_text("🎉 Registro completado. Tienes 0 créditos.",
+                              chat_id=call.message.chat.id,
+                              message_id=call.message.message_id)
 
 
 # ===========================
@@ -85,6 +88,7 @@ def handle_register(call):
 @bot.callback_query_handler(func=lambda call: call.data == "ver_creditos")
 def handle_ver_creditos(call):
     bot.answer_callback_query(call.id)
+
     user_id = call.from_user.id
     encontrado = False
 
@@ -102,7 +106,7 @@ def handle_ver_creditos(call):
                 break
 
     if not encontrado:
-        bot.send_message(call.message.chat.id, "❌ No estás registrado. Usa /start para registrarte.")
+        bot.send_message(call.message.chat.id, "❌ No estás registrado.")
 
 
 # ===========================
@@ -111,59 +115,67 @@ def handle_ver_creditos(call):
 @bot.callback_query_handler(func=lambda call: call.data == "botspam_mail")
 def handle_botspam_mail(call):
     bot.answer_callback_query(call.id)
-    user_id = call.from_user.id
-    registrado = False
-    creditos = 0
 
+    user_id = call.from_user.id
+    encontrado = False
+
+    # Verificar si el usuario está registrado y tiene al menos 2 créditos
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             for line in f:
                 parts = line.strip().split(",")
-                if len(parts) >= 3 and str(user_id) == parts[0]:
-                    registrado = True
-                    creditos = int(parts[2])
+                if str(user_id) == parts[0]:
+                    if len(parts) >= 3:
+                        creditos = int(parts[2])
+                        if creditos >= 2:
+                            encontrado = True
                     break
 
-    if not registrado:
-        bot.send_message(call.message.chat.id, "❌ No estás registrado. Pulsa 'Registrarme' primero.")
+    if not encontrado:
+        bot.send_message(call.message.chat.id, "❌ Necesitas estar registrado y tener al menos 2 créditos.")
         return
 
-    if creditos < 2:
-        bot.send_message(call.message.chat.id, f"❌ Necesitas al menos 2 créditos. Actualmente tienes: {creditos}.")
-        return
+    bot.send_message(call.message.chat.id, " Ingresa el mail al que quieres enviar el BOTSPAM MAIL:")
+    bot.register_next_step_handler(call.message, procesar_botspam_mail)
 
-    # Envía mensaje y usa esa respuesta para registrar el siguiente paso
-    msg = bot.send_message(call.message.chat.id, "📧 Ingresa el mail al que quieres enviar el BOTSPAM MAIL:")
-    bot.register_next_step_handler(msg, procesar_botspam_mail)
-
-
+# ===========================
+#  Procesar número para BOTSPAM MAIL
+# ===========================
 def procesar_botspam_mail(message):
     email = message.text.strip()
+    user_id = message.from_user.id
+
+    # Validar formato mail básico
     if "@" not in email or "." not in email:
         bot.send_message(message.chat.id, "❌ Ingresa un correo válido.")
         return
 
-    msg = bot.send_message(
+    bot.send_message(
         message.chat.id,
-        "🔢 ¿Cuántas veces deseas repetir el proceso de mail?\n\n⚠️ Recuerda: cada repetición cuesta 2 créditos."
+        "🔢 ¿Cuántas veces deseas repetir el proceso de mail?\n\n"
+        "⚠️ Recuerda: cada repetición cuesta 2 créditos."
     )
-    bot.register_next_step_handler(msg, procesar_repeticiones_mail, email)
+    bot.register_next_step_handler(message, procesar_repeticiones_mail, email)
 
-
+# ===========================
+# 🔢 Procesar cantidad de repeticiones (mail)
+# ===========================
 def procesar_repeticiones_mail(message, email):
     user_id = message.from_user.id
+
     try:
         repeticiones = int(message.text.strip())
         if repeticiones <= 0:
-            bot.send_message(message.chat.id, "❌ Ingresa un número mayor a 0.")
+            bot.send_message(message.chat.id, "❌ Ingresa un número válido mayor a 0.")
             return
-    except ValueError:
-        bot.send_message(message.chat.id, "❌ Ingresa un número entero válido.")
+    except:
+        bot.send_message(message.chat.id, "❌ Ingresa un número válido.")
         return
 
     costo_total = repeticiones * 2
-    creditos_actuales = 0
 
+    # Leer créditos del usuario
+    creditos_actuales = 0
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             for line in f:
@@ -175,28 +187,37 @@ def procesar_repeticiones_mail(message, email):
     if creditos_actuales < costo_total:
         bot.send_message(
             message.chat.id,
-            f"❌ Créditos insuficientes.\nTienes {creditos_actuales}, pero necesitas {costo_total}."
+            f"❌ No tienes suficientes créditos.\n"
+            f"💰 Tienes {creditos_actuales}, pero necesitas {costo_total}."
         )
         return
 
+    # Descontar créditos
     actualizar_creditos(user_id, -costo_total)
+
     bot.send_message(
         message.chat.id,
-        f"💳 Se descontaron {costo_total} créditos. Iniciando BOTSPAM email {repeticiones} veces a {email}..."
+        f"💳 Se descontaron {costo_total} créditos. Iniciando BOTSPAM email {repeticiones} veces al mail {email}..."
     )
+
     ejecutar_proceso_mail(message.chat.id, email, repeticiones)
 
-
+# ===========================
+# 🚀 Ejecutar proceso mail
+# ===========================
 def ejecutar_proceso_mail(chat_id, email, repeats=1):
     bot.send_message(chat_id, "📡 Enviando Spam Mail...")
+
     for i in range(repeats):
         try:
+            # Ejecuta el archivo email.py (debe estar en la misma carpeta)
             os.system(f'python mialspamer2026.py "{email}"')
+
             bot.send_message(chat_id, f"✅ MAIL {i + 1} completado.")
         except Exception as e:
             bot.send_message(chat_id, f"❌ Error en MAIL {i + 1}: {e}")
-    bot.send_message(chat_id, "🎉 ¡Proceso completado!")
 
+    bot.send_message(chat_id, "🎉 ¡Proceso de MAIL completado! Autor: @Juanper33z")
 
 # ===========================
 # 🔘 Botón: BOTSPAM SMS
@@ -204,58 +225,69 @@ def ejecutar_proceso_mail(chat_id, email, repeats=1):
 @bot.callback_query_handler(func=lambda call: call.data == "botspam_sms")
 def handle_botspam_sms(call):
     bot.answer_callback_query(call.id)
-    user_id = call.from_user.id
-    registrado = False
-    creditos = 0
 
+    user_id = call.from_user.id
+    encontrado = False
+
+    # Verificar si el usuario está registrado y tiene al menos 2 créditos
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             for line in f:
                 parts = line.strip().split(",")
-                if len(parts) >= 3 and str(user_id) == parts[0]:
-                    registrado = True
-                    creditos = int(parts[2])
+                if str(user_id) == parts[0]:
+                    if len(parts) >= 3:
+                        creditos = int(parts[2])
+                        if creditos >= 2:
+                            encontrado = True
                     break
 
-    if not registrado:
-        bot.send_message(call.message.chat.id, "❌ No estás registrado. Pulsa 'Registrarme' primero.")
+    if not encontrado:
+        bot.send_message(call.message.chat.id, "❌ Necesitas estar registrado y tener al menos 2 créditos.")
         return
 
-    if creditos < 2:
-        bot.send_message(call.message.chat.id, f"❌ Necesitas al menos 2 créditos. Actualmente tienes: {creditos}.")
-        return
-
-    msg = bot.send_message(call.message.chat.id, "📱 Ingresa el número al que quieres enviar el BOTSPAM SMS:")
-    bot.register_next_step_handler(msg, procesar_botspam_sms)
+    bot.send_message(call.message.chat.id, "📱 Ingresa el número al que quieres enviar el BOTSPAM SMS:")
+    bot.register_next_step_handler(call.message, procesar_botspam_sms)
 
 
+# ===========================
+# 📱 Procesar número para BOTSPAM SMS
+# ===========================
 def procesar_botspam_sms(message):
     numero = message.text.strip()
+    user_id = message.from_user.id
+
+    # Validar formato numérico básico
     if not numero.isdigit() or len(numero) < 8:
-        bot.send_message(message.chat.id, "❌ Ingresa un número válido (mínimo 8 dígitos).")
+        bot.send_message(message.chat.id, "❌ Ingresa un número válido (solo dígitos, mínimo 8).")
         return
 
-    msg = bot.send_message(
+    bot.send_message(
         message.chat.id,
-        "🔢 ¿Cuántas veces deseas repetir el proceso de SMS?\n\n⚠️ Recuerda: cada repetición cuesta 2 créditos."
+        "🔢 ¿Cuántas veces deseas repetir el proceso de SMS?\n\n"
+        "⚠️ Recuerda: cada repetición cuesta 2 créditos."
     )
-    bot.register_next_step_handler(msg, procesar_repeticiones_sms, numero)
+    bot.register_next_step_handler(message, procesar_repeticiones_sms, numero)
 
 
+# ===========================
+# 🔢 Procesar cantidad de repeticiones (SMS)
+# ===========================
 def procesar_repeticiones_sms(message, numero):
     user_id = message.from_user.id
+
     try:
         repeticiones = int(message.text.strip())
         if repeticiones <= 0:
-            bot.send_message(message.chat.id, "❌ Ingresa un número mayor a 0.")
+            bot.send_message(message.chat.id, "❌ Ingresa un número válido mayor a 0.")
             return
-    except ValueError:
-        bot.send_message(message.chat.id, "❌ Ingresa un número entero válido.")
+    except:
+        bot.send_message(message.chat.id, "❌ Ingresa un número válido.")
         return
 
     costo_total = repeticiones * 2
-    creditos_actuales = 0
 
+    # Leer créditos del usuario
+    creditos_actuales = 0
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             for line in f:
@@ -267,65 +299,112 @@ def procesar_repeticiones_sms(message, numero):
     if creditos_actuales < costo_total:
         bot.send_message(
             message.chat.id,
-            f"❌ Créditos insuficientes.\nTienes {creditos_actuales}, pero necesitas {costo_total}."
+            f"❌ No tienes suficientes créditos.\n"
+            f"💰 Tienes {creditos_actuales}, pero necesitas {costo_total}."
         )
         return
 
+    # Descontar créditos
     actualizar_creditos(user_id, -costo_total)
+
     bot.send_message(
         message.chat.id,
-        f"💳 Se descontaron {costo_total} créditos. Iniciando BOTSPAM SMS {repeticiones} veces a {numero}..."
+        f"💳 Se descontaron {costo_total} créditos. Iniciando BOTSPAM SMS {repeticiones} veces al número {numero}..."
     )
+
     ejecutar_proceso_sms(message.chat.id, numero, repeticiones)
 
 
+# ===========================
+# 🚀 Ejecutar proceso SMS
+# ===========================
 def ejecutar_proceso_sms(chat_id, numero, repeats=1):
     bot.send_message(chat_id, "📡 Enviando SMS...")
+
     for i in range(repeats):
         try:
+            # Ejecuta el archivo SMS.py (debe estar en la misma carpeta)
             os.system(f'python SMS.py "{numero}"')
+
             bot.send_message(chat_id, f"✅ SMS {i + 1} completado.")
         except Exception as e:
             bot.send_message(chat_id, f"❌ Error en SMS {i + 1}: {e}")
-    bot.send_message(chat_id, "🎉 ¡Proceso completado!")
+
+    bot.send_message(chat_id, "🎉 ¡Proceso de SMS completado! Autor: @Juanper33z")
+
+# ===========================
+# /mis_creditos
+# ===========================
+@bot.message_handler(commands=["mis_creditos"])
+def ver_creditos(message):
+    user_id = message.from_user.id
+    encontrado = False
+
+    if not os.path.exists(DATA_FILE):
+        bot.reply_to(message, "⚠️ No hay usuarios registrados aún.")
+        return
+
+    with open(DATA_FILE, "r") as f:
+        for line in f:
+            parts = line.strip().split(",")
+            if len(parts) >= 3 and str(user_id) == parts[0]:
+                creditos = parts[2]
+                bot.reply_to(message, f"💰 Tienes {creditos} créditos.")
+                encontrado = True
+                break
+
+    if not encontrado:
+        bot.reply_to(message, "❌ No estás registrado. Usa /start para registrarte.")
 
 
 # ===========================
-# Utilidades de Créditos y Comandos Admin
+# 🧮 Función para modificar créditos
 # ===========================
 def actualizar_creditos(user_id, cantidad):
-    if not os.path.exists(DATA_FILE):
-        return False
     lineas = []
     actualizado = False
+
     with open(DATA_FILE, "r") as f:
         for line in f:
             parts = line.strip().split(",")
             if len(parts) >= 3 and str(user_id) == parts[0]:
                 username = parts[1]
-                creditos = max(0, int(parts[2]) + cantidad)
+                creditos = int(parts[2]) + cantidad
+                if creditos < 0:
+                    creditos = 0
                 lineas.append(f"{user_id},{username},{creditos}\n")
                 actualizado = True
             else:
                 lineas.append(line)
+
     if actualizado:
         with open(DATA_FILE, "w") as f:
             f.writelines(lineas)
     return actualizado
 
 
+
+# ===========================
+# /sumar_creditos y /restar_creditos (solo admins)
+# ===========================
 @bot.message_handler(commands=["sumar_creditos", "restar_creditos"])
 def modificar_creditos(message):
+
     if message.from_user.id not in ADMINS:
-        bot.reply_to(message, "⛔ No tienes permiso.")
+        bot.reply_to(message, "⛔ No tienes permiso para usar este comando.")
         return
 
     partes = message.text.split()
+
     if len(partes) != 3:
-        bot.reply_to(message, "❌ Uso:\n/sumar_creditos @usuario 10\n/sumar_creditos ID 10")
+        bot.reply_to(
+            message,
+            "❌ Uso:\n/sumar_creditos @usuario 10\n/sumar_creditos 5504611412 10"
+        )
         return
 
     objetivo = partes[1].replace("@", "")
+
     try:
         cantidad = int(partes[2])
     except ValueError:
@@ -347,15 +426,23 @@ def modificar_creditos(message):
 
     for line in lineas:
         parts = line.strip().split(",")
+
         if len(parts) < 3:
             nuevas_lineas.append(line)
             continue
 
         uid, uname, creditos = parts
+
         if uid == objetivo or uname.lower() == objetivo.lower():
+
             nuevo_credito = max(0, int(creditos) + cantidad)
-            nuevas_lineas.append(f"{uid},{uname},{nuevo_credito}\n")
+
+            nuevas_lineas.append(
+                f"{uid},{uname},{nuevo_credito}\n"
+            )
+
             actualizado = True
+
         else:
             nuevas_lineas.append(line)
 
@@ -363,57 +450,99 @@ def modificar_creditos(message):
         f.writelines(nuevas_lineas)
 
     if actualizado:
-        bot.send_message(message.chat.id, f"✅ Créditos actualizados correctamente.")
+        signo = "+" if cantidad > 0 else ""
+
+        bot.send_message(
+            message.chat.id,
+            f"✅ Créditos actualizados ({signo}{cantidad})."
+        )
     else:
-        bot.send_message(message.chat.id, f"❌ Usuario u ID '{objetivo}' no encontrado.")
+        bot.send_message(
+            message.chat.id,
+            f"❌ Usuario o ID '{objetivo}' no encontrado."
+        )
 
 
-@bot.message_handler(commands=["mis_creditos"])
-def ver_creditos_cmd(message):
-    handle_ver_creditos_msg(message)
+# ===========================
+# /usuarios (solo admins)
+# ===========================
+@bot.message_handler(commands=["usuarios"])
+def listar_usuarios(message):
+    if message.from_user.id not in ADMINS:
+        bot.reply_to(message, "⛔ No tienes permiso para ver la lista.")
+        return
 
-def handle_ver_creditos_msg(message):
-    user_id = message.from_user.id
+    if not os.path.exists(DATA_FILE):
+        bot.reply_to(message, "⚠️ No hay usuarios registrados aún.")
+        return
+
+    texto = "📋 Usuarios registrados:\n"
+    with open(DATA_FILE, "r") as f:
+        for line in f:
+            uid, uname, cred = line.strip().split(",")
+            texto += f"• @{uname} - {cred} créditos\n"
+
+    bot.reply_to(message, texto)
+
+# ===========================
+# /broadcast (solo admins)
+# ===========================
+@bot.message_handler(commands=["broadcast"])
+def broadcast(message):
+
+    if message.from_user.id not in ADMINS:
+        bot.reply_to(message, "⛔ No tienes permiso para usar este comando.")
+        return
+
+    bot.reply_to(message, "✍️ Escribe el mensaje que deseas enviar a TODOS los usuarios registrados:")
+    bot.register_next_step_handler(message, enviar_broadcast)
+
+
+def enviar_broadcast(message):
+
+    texto = message.text
+
     if not os.path.exists(DATA_FILE):
         bot.reply_to(message, "⚠️ No hay usuarios registrados.")
         return
 
+    enviados = 0
+    errores = 0
+
     with open(DATA_FILE, "r") as f:
         for line in f:
             parts = line.strip().split(",")
-            if len(parts) >= 3 and str(user_id) == parts[0]:
-                bot.reply_to(message, f"💰 Tienes {parts[2]} créditos.")
-                return
-    bot.reply_to(message, "❌ No estás registrado.")
 
+            if len(parts) >= 1:
+                user_id = parts[0]
 
-@bot.message_handler(commands=["usuarios"])
-def listar_usuarios(message):
-    if message.from_user.id not in ADMINS:
-        return
-    if not os.path.exists(DATA_FILE):
-        bot.reply_to(message, "⚠️ Sin usuarios.")
-        return
-    texto = "📋 Usuarios registrados:\n"
-    with open(DATA_FILE, "r") as f:
-        for line in f:
-            parts = line.strip().split(",")
-            if len(parts) >= 3:
-                texto += f"• @{parts[1]} ({parts[0]}) - {parts[2]} créditos\n"
-    bot.reply_to(message, texto)
+                try:
+                    bot.send_message(user_id, f"📢 MENSAJE DEL ADMIN\n\n{texto}")
+                    enviados += 1
+                except:
+                    errores += 1
 
+    bot.reply_to(
+        message,
+        f"✅ Mensaje enviado.\n\n📤 Enviados: {enviados}\n❌ Errores: {errores}"
+    )
 
+# ===========================
+# /id
+# ===========================
 @bot.message_handler(commands=["id"])
 def mostrar_id(message):
-    bot.reply_to(message, f"🆔 Tu ID: {message.from_user.id}\n👤 Usuario: @{message.from_user.username}")
 
+    user_id = message.from_user.id
+    username = message.from_user.username or "SinUsername"
 
-# Reemplaza esto:
-# bot.remove_webhook()
-# bot.infinity_polling(skip_pending=True)
-
-# Por esto otro para ver los errores claramente en la consola de Railway:
-if __name__ == "__main__":
-    bot.remove_webhook()
-    print("🤖 Bot iniciado correctamente sin conflictos.")
-    bot.polling(none_stop=True)
+    bot.reply_to(
+        message,
+        f"🆔 Tu ID es:\n\n{user_id}\n\n👤 Usuario: @{username}"
+    )
+    
+# ===========================
+# 🟢 Iniciar el bot
+# ===========================
+print("🤖 Bot en marcha...")
+bot.infinity_polling(skip_pending=True)
