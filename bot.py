@@ -408,9 +408,12 @@ def mostrar_id(message):
     bot.reply_to(message, f"🆔 Tu ID: {message.from_user.id}\n👤 Usuario: @{message.from_user.username}")
 
 
-# ===========================
-# 🟢 Iniciar el bot
-# ===========================
-print("🤖 Bot en marcha...")
-bot.remove_webhook()
-bot.infinity_polling(skip_pending=True)
+# Reemplaza esto:
+# bot.remove_webhook()
+# bot.infinity_polling(skip_pending=True)
+
+# Por esto otro para ver los errores claramente en la consola de Railway:
+if __name__ == "__main__":
+    bot.remove_webhook()
+    print("🤖 Bot iniciado correctamente sin conflictos.")
+    bot.polling(none_stop=True)
