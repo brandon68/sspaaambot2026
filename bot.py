@@ -1,19 +1,21 @@
-import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import os
 import json
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+# ▶️ Cargar token desde las Variables de Entorno
+TOKEN = os.getenv("BOT_TOKEN")
 
-# ▶️ Token del bot (NO LO COMPARTAS EN PÚBLICO)
-TOKEN = "8290258052:AAFP5AFx2_zGOiXQTA1a2lqdbq469F-30Fg"
+if not TOKEN:
+    raise ValueError("❌ No se encontró la variable de entorno BOT_TOKEN en Railway.")
+
 bot = telebot.TeleBot(TOKEN)
 
 # 📁 Archivo donde se guardan los usuarios
 DATA_FILE = "/data/usuarios.txt"
 
 # 👑 Lista de administradores por ID de Telegram
-ADMINS = [5504611412]  # Reemplaza con tu ID
-
+ADMINS = [5504611412]
 
 # ===========================
 # /start
