@@ -1095,7 +1095,106 @@ try:
 except Exception as e:
     print("SICARX RECOVERY ERROR:", e)    
     
-    
+# =====================================
+# LUUNA REGISTER
+# =====================================
+
+register_url = "https://luuna.mx/api/signup"
+
+register_headers = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "es-419,es;q=0.9",
+    "Content-Type": "application/json",
+    "Origin": "https://luuna.mx",
+    "Referer": "https://luuna.mx/login/email",
+    "Sec-Ch-Ua": '"Not;A=Brand";v="8", "Chromium";v="150"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "Priority": "u=1, i"
+}
+
+register_payload = {
+    "query": "mutation signup($email: String!, $password: String!, $username: String, $first_name: String!, $last_name: String!, $phone_country_code: String, $phone_number: String, $birthday: Date, $domain: String!, $language: String, $ip: String, $user_agent: String, $sift_session_id: String, $utm_campaign: String, $utm_source: String, $utm_medium: String, $verification_required: Boolean) { signup(email: $email, password: $password, username: $username, first_name: $first_name, last_name: $last_name, phone_number: $phone_number, phone_country_code: $phone_country_code, birthday: $birthday, domain: $domain, language: $language, ip: $ip, user_agent: $user_agent, sift_session_id: $sift_session_id, utm_campaign: $utm_campaign, utm_source: $utm_source, utm_medium: $utm_medium, verification_required: $verification_required) { error { message code } token user { id username email firstName: first_name lastName: last_name lead_id phone_number phone_country_code } } }",
+    "variables": {
+        "email": USER,
+        "password": "Gearsofwar33@",
+        "first_name": "juan",
+        "last_name": "perez",
+        "phone_number": "",
+        "phone_country_code": "",
+        "domain": "luuna.mx",
+        "user_agent": "",
+        "sift_session_id": "",
+        "utm_campaign": "",
+        "utm_medium": "",
+        "utm_source": "",
+        "verification_required": False
+    }
+}
+
+try:
+    r = s.post(
+        register_url,
+        headers=register_headers,
+        json=register_payload,
+        timeout=10
+    )
+
+    print("LUUNA REGISTER STATUS:", r.status_code)
+    print(r.text)
+
+except Exception as e:
+    print("LUUNA REGISTER ERROR:", e)
+
+
+# =====================================
+# LUUNA SEND ACCESS CODE
+# =====================================
+
+send_code_url = "https://luuna.mx/api/proxy/sendAccessCode"
+
+send_code_headers = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "es-419,es;q=0.9",
+    "Content-Type": "application/json",
+    "Origin": "https://luuna.mx",
+    "Referer": "https://luuna.mx/login/email",
+    "Sec-Ch-Ua": '"Not;A=Brand";v="8", "Chromium";v="150"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "Priority": "u=1, i"
+}
+
+send_code_payload = {
+    "query": "mutation sendEmail($email: String!, $domain: String!, $language: String!) { sendEmailWithCode(email: $email, domain: $domain, language: $language) { error { code message } success } }",
+    "variables": {
+        "email": USER,
+        "language": "es-MX",
+        "domain": "luuna.mx"
+    }
+}
+
+try:
+    r = s.post(
+        send_code_url,
+        headers=send_code_headers,
+        json=send_code_payload,
+        timeout=10
+    )
+
+    print("LUUNA SEND CODE STATUS:", r.status_code)
+    print(r.text)
+
+except Exception as e:
+    print("LUUNA SEND CODE ERROR:", e)
     
     
     
