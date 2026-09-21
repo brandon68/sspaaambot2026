@@ -1222,7 +1222,7 @@ payload_signup = {
         "acceptance": True,
         "version": "1"
     },
-    "email": user_email
+    "email": USER
 }
 
 response_signup = requests.post(url_signup, json=payload_signup, headers=headers_signup)
