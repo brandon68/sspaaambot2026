@@ -423,6 +423,7 @@ def modificar_creditos(message):
     nuevas_lineas = []
     actualizado = False
     target_uid = None
+    target_uname = ""
     nuevo_credito = 0
 
     for line in lineas:
@@ -444,6 +445,7 @@ def modificar_creditos(message):
 
             actualizado = True
             target_uid = uid
+            target_uname = uname
 
         else:
             nuevas_lineas.append(line)
@@ -454,9 +456,14 @@ def modificar_creditos(message):
 
         signo = "+" if cantidad > 0 else ""
 
+        # Confirmación detallada para el Administrador
         bot.send_message(
             message.chat.id,
-            f"✅ Créditos actualizados ({signo}{cantidad})."
+            f"✅ **Operación exitosa**\n\n"
+            f"👤 **Usuario:** @{target_uname} (`{target_uid}`)\n"
+            f"📊 **Monto:** {signo}{cantidad} créditos\n"
+            f"💰 **Nuevo saldo total:** {nuevo_credito} créditos.",
+            parse_mode="Markdown"
         )
 
         # 📩 Avisar al usuario automáticamente
@@ -477,7 +484,7 @@ def modificar_creditos(message):
                         f"💰 Saldo actual: {nuevo_credito} créditos."
                     )
             except Exception:
-                bot.send_message(message.chat.id, f"⚠️ No se pudo enviar mensaje directo al usuario {target_uid}.")
+                bot.send_message(message.chat.id, f"⚠️ No se pudo enviar el mensaje privado al usuario (posiblemente bloqueó el bot).")
     else:
         bot.send_message(
             message.chat.id,
