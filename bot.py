@@ -135,7 +135,7 @@ def handle_botspam_mail(call):
         bot.send_message(call.message.chat.id, "❌ Necesitas estar registrado y tener al menos 2 créditos.")
         return
 
-    bot.send_message(call.message.chat.id, " Ingresa el mail al que quieres enviar el BOTSPAM MAIL:")
+    bot.send_message(call.message.chat.id, "📧 Ingresa el mail al que quieres enviar el BOTSPAM MAIL:")
     bot.register_next_step_handler(call.message, procesar_botspam_mail)
 
 # ===========================
@@ -383,7 +383,6 @@ def actualizar_creditos(user_id, cantidad):
     return actualizado
 
 
-
 # ===========================
 # /sumar_creditos y /restar_creditos (solo admins)
 # ===========================
@@ -423,6 +422,8 @@ def modificar_creditos(message):
 
     nuevas_lineas = []
     actualizado = False
+    target_uid = None
+    nuevo_credito = 0
 
     for line in lineas:
         parts = line.strip().split(",")
@@ -442,20 +443,41 @@ def modificar_creditos(message):
             )
 
             actualizado = True
+            target_uid = uid
 
         else:
             nuevas_lineas.append(line)
 
-    with open(DATA_FILE, "w") as f:
-        f.writelines(nuevas_lineas)
-
     if actualizado:
+        with open(DATA_FILE, "w") as f:
+            f.writelines(nuevas_lineas)
+
         signo = "+" if cantidad > 0 else ""
 
         bot.send_message(
             message.chat.id,
             f"✅ Créditos actualizados ({signo}{cantidad})."
         )
+
+        # 📩 Avisar al usuario automáticamente
+        if target_uid:
+            try:
+                if cantidad > 0:
+                    bot.send_message(
+                        target_uid,
+                        f"🎉 ¡Tus créditos han sido actualizados!\n\n"
+                        f"➕ Se han sumado {cantidad} créditos a tu cuenta.\n"
+                        f"💰 Saldo actual: {nuevo_credito} créditos.\n\n"
+                        f"🙏 ¡Gracias por tu compra!"
+                    )
+                else:
+                    bot.send_message(
+                        target_uid,
+                        f"📉 Se han descontado {abs(cantidad)} créditos de tu cuenta.\n"
+                        f"💰 Saldo actual: {nuevo_credito} créditos."
+                    )
+            except Exception:
+                bot.send_message(message.chat.id, f"⚠️ No se pudo enviar mensaje directo al usuario {target_uid}.")
     else:
         bot.send_message(
             message.chat.id,
@@ -483,6 +505,48 @@ def listar_usuarios(message):
             texto += f"• @{uname} - {cred} créditos\n"
 
     bot.reply_to(message, texto)
+
+
+# ===========================
+# /anuncio (solo admins) - Comando directo /anuncio <texto>
+# ===========================
+@bot.message_handler(commands=["anuncio"])
+def anuncio_directo(message):
+    if message.from_user.id not in ADMINS:
+        bot.reply_to(message, "⛔ No tienes permiso para usar este comando.")
+        return
+
+    partes = message.text.split(maxsplit=1)
+
+    if len(partes) < 2:
+        bot.reply_to(message, "❌ Uso:\n`/anuncio Tu mensaje aquí`", parse_mode="Markdown")
+        return
+
+    texto_anuncio = partes[1]
+
+    if not os.path.exists(DATA_FILE):
+        bot.reply_to(message, "⚠️ No hay usuarios registrados.")
+        return
+
+    enviados = 0
+    errores = 0
+
+    with open(DATA_FILE, "r") as f:
+        for line in f:
+            parts = line.strip().split(",")
+            if len(parts) >= 1 and parts[0]:
+                user_id = parts[0]
+                try:
+                    bot.send_message(user_id, f"📢 ANUNCIO:\n\n{texto_anuncio}")
+                    enviados += 1
+                except Exception:
+                    errores += 1
+
+    bot.reply_to(
+        message,
+        f"✅ Anuncio enviado.\n\n📤 Enviados: {enviados}\n❌ Errores: {errores}"
+    )
+
 
 # ===========================
 # /broadcast (solo admins)
@@ -540,7 +604,7 @@ def mostrar_id(message):
         message,
         f"🆔 Tu ID es:\n\n{user_id}\n\n👤 Usuario: @{username}"
     )
-    
+
 # ===========================
 # 🟢 Iniciar el bot
 # ===========================
