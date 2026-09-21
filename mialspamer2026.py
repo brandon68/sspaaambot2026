@@ -1196,6 +1196,65 @@ try:
 except Exception as e:
     print("LUUNA SEND CODE ERROR:", e)
     
-    
-    
+
+# -------------------------------------------------------------------
+# 1. GEN_TOKEN_SEVEN: Petición de registro/inicio por correo
+# -------------------------------------------------------------------
+url_signup = "https://api.sevenlyconnect.iconn.com.mx/sevenly_api/signup/email"
+
+headers_signup = {
+    "Host": "api.sevenlyconnect.iconn.com.mx",
+    "Accept": "*/*",
+    "Authorization": "apiKey qqfD7AHENFPqn64RYZ8cUReIubBLypqo",
+    "x-source-type": "SEVENLY_APP",
+    "x-correlation-id": "27623d49-0dfd-4ff1-ba2d-ac4071c4400c",
+    "x-state-id": "7A",
+    "Accept-Language": "es-MX,es-419;q=0.9,es;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Content-Type": "application/json",
+    "User-Agent": "Sevenly/352 CFNetwork/3860.400.51 Darwin/25.3.0",
+    "Connection": "keep-alive",
+    "Cookie": "__uzmc=267033111869; __uzmd=1777414597; __uzma=45d59b1a-f8b2-4ed1-a90e-18216d830679; __uzmb=1777414366; __uzme=4974"
+}
+
+payload_signup = {
+    "termsAndConditions": {
+        "acceptance": True,
+        "version": "1"
+    },
+    "email": user_email
+}
+
+response_signup = requests.post(url_signup, json=payload_signup, headers=headers_signup)
+
+# PARSE enrollmentId: Extraer enrollmentId de la respuesta JSON
+enrollment_id = response_signup.json().get("enrollmentId")
+
+# -------------------------------------------------------------------
+# 2. ENVIAR_MAIL_SEVEN: Petición para solicitar código/conexión al correo
+# -------------------------------------------------------------------
+url_connection = "https://api.sevenlyconnect.iconn.com.mx/sevenly_api/signup/email/connection-request"
+
+headers_connection = {
+    "Host": "api.sevenlyconnect.iconn.com.mx",
+    "Accept": "*/*",
+    "Content-Type": "application/json",
+    "Accept-Encoding": "gzip, deflate, br",
+    "User-Agent": "Sevenly/352 CFNetwork/3860.400.51 Darwin/25.3.0",
+    "Connection": "keep-alive",
+    "Cookie": "__uzmc=554024341760; __uzmd=1777415138; __uzma=45d59b1a-f8b2-4ed1-a90e-18216d830679; __uzmb=1777414366; __uzme=4974",
+    "x-correlation-id": "96e0a7bd-1b3b-4fbf-a911-19aec54cb45b",
+    "Authorization": "apiKey qqfD7AHENFPqn64RYZ8cUReIubBLypqo",
+    "Accept-Language": "es-MX,es-419;q=0.9,es;q=0.8"
+}
+
+payload_connection = {
+    "enrollmentId": enrollment_id
+}
+
+response_connection = requests.post(url_connection, json=payload_connection, headers=headers_connection)
+
+# Mostrar respuesta final
+print(response_connection.status_code)
+print(response_connection.text)    
     
