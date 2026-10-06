@@ -17,6 +17,10 @@ DATA_FILE = "/data/usuarios.txt"
 # 👑 Lista de administradores por ID de Telegram
 ADMINS = [5504611412]
 
+# ⚙️ Configuración de bienvenida
+CREDITOS_REGALO = 25
+GRUPO_ENLACE = "https://t.me/+kIN_CgyaWP5lZDUx"
+
 # ===========================
 # /start
 # ===========================
@@ -25,12 +29,15 @@ def send_welcome(message):
     user_id = message.from_user.id
     username = message.from_user.username or "SinUsername"
     registrado = False
+    creditos = 0
 
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             for line in f:
-                if str(user_id) in line:
+                parts = line.strip().split(",")
+                if len(parts) >= 3 and str(user_id) == parts[0]:
                     registrado = True
+                    creditos = parts[2]
                     break
 
     markup = InlineKeyboardMarkup()
@@ -49,7 +56,29 @@ def send_welcome(message):
     btn_comprar = InlineKeyboardButton("Comprar créditos", url="https://t.me/JUANPER33Z")
     markup.add(btn_comprar)
 
-    bot.send_message(message.chat.id, "👋 ¡Hola! Usa los botones de abajo:", reply_markup=markup)
+    texto_bienvenida = (
+        f"¡Bienvenido de nuevo al **Bot Spam Mail & SMS**! 🤖\n\n"
+        f"👤 **Usuario:** @{username}\n"
+        f"🆔 **ID:** `{user_id}`\n"
+        f"💳 **Créditos disponibles:** {creditos}\n\n"
+        f"🌐 **Comunidad y más Bots:**\n"
+        f"¿Quieres conocer todos los bots que tenemos disponibles? ¡Únete a nuestro grupo oficial!\n"
+        f"👉 [Haz clic aquí para unirte al Grupo]({GRUPO_ENLACE})\n\n"
+        f"🛒 **Soporte y Ventas:**\n"
+        f"Para adquirir más créditos contacta directamente a nuestro administrador de confianza: @JUANPER33Z ⚡️\n\n"
+        f"📝 **¿Cómo usarlo?**\n"
+        f"• Usa los botones de abajo para elegir **BOTSPAM MAIL** o **BOTSPAM SMS**.\n"
+        f"• Ingresa el correo o número objetivo cuando el bot te lo solicite.\n"
+        f"• Indica la cantidad de repeticiones (cada repetición cuesta 2 créditos)."
+    )
+
+    bot.send_message(
+        message.chat.id,
+        texto_bienvenida,
+        reply_markup=markup,
+        parse_mode="Markdown",
+        disable_web_page_preview=True
+    )
 
 
 # ===========================
@@ -61,6 +90,7 @@ def handle_register(call):
 
     user_id = call.from_user.id
     username = call.from_user.username or "SinUsername"
+    first_name = call.from_user.first_name or "Usuario"
 
     if not os.path.exists(DATA_FILE):
         open(DATA_FILE, "w").close()
@@ -77,11 +107,40 @@ def handle_register(call):
                               chat_id=call.message.chat.id,
                               message_id=call.message.message_id)
     else:
+        # Guardar usuario con 25 créditos iniciales
         with open(DATA_FILE, "a") as f:
-            f.write(f"{user_id},{username},0\n")
-        bot.edit_message_text("🎉 Registro completado. Tienes 0 créditos.",
-                              chat_id=call.message.chat.id,
-                              message_id=call.message.message_id)
+            f.write(f"{user_id},{username},{CREDITOS_REGALO}\n")
+        
+        # Mensaje al usuario recién registrado con botón para unirse al grupo
+        markup = InlineKeyboardMarkup()
+        btn_grupo = InlineKeyboardButton("👥 Unirse al Grupo Oficial", url=GRUPO_ENLACE)
+        markup.add(btn_grupo)
+
+        bot.edit_message_text(
+            f"🎉 **¡Registro completado exitosamente!**\n\n"
+            f"🎁 Has recibido un bono de bienvenida de **{CREDITOS_REGALO} créditos**.\n"
+            f"💰 **Saldo actual:** {CREDITOS_REGALO} créditos.\n\n"
+            f"📢 ¡Únete a nuestro grupo oficial para conocer nuestros otros bots y novedades!",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+
+        # 🚨 Alerta solo al Administrador sobre el nuevo registro
+        for admin_id in ADMINS:
+            try:
+                bot.send_message(
+                    admin_id,
+                    f"🚨 **NUEVO USUARIO REGISTRADO**\n\n"
+                    f"👤 **Nombre:** {first_name}\n"
+                    f"🏷 **Username:** @{username}\n"
+                    f"🆔 **ID:** `{user_id}`\n"
+                    f"🎁 **Bono entregado:** {CREDITOS_REGALO} créditos",
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
 
 
 # ===========================
@@ -121,7 +180,6 @@ def handle_botspam_mail(call):
     user_id = call.from_user.id
     encontrado = False
 
-    # Verificar si el usuario está registrado y tiene al menos 2 créditos
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             for line in f:
@@ -141,13 +199,12 @@ def handle_botspam_mail(call):
     bot.register_next_step_handler(call.message, procesar_botspam_mail)
 
 # ===========================
-#  Procesar número para BOTSPAM MAIL
+# Procesar número para BOTSPAM MAIL
 # ===========================
 def procesar_botspam_mail(message):
     email = message.text.strip()
     user_id = message.from_user.id
 
-    # Validar formato mail básico
     if "@" not in email or "." not in email:
         bot.send_message(message.chat.id, "❌ Ingresa un correo válido.")
         return
@@ -176,7 +233,6 @@ def procesar_repeticiones_mail(message, email):
 
     costo_total = repeticiones * 2
 
-    # Leer créditos del usuario
     creditos_actuales = 0
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
@@ -194,7 +250,6 @@ def procesar_repeticiones_mail(message, email):
         )
         return
 
-    # Descontar créditos
     actualizar_creditos(user_id, -costo_total)
 
     bot.send_message(
@@ -212,9 +267,7 @@ def ejecutar_proceso_mail(chat_id, email, repeats=1):
 
     for i in range(repeats):
         try:
-            # Ejecuta el archivo email.py (debe estar en la misma carpeta)
             os.system(f'python mialspamer2026.py "{email}"')
-
             bot.send_message(chat_id, f"✅ MAIL {i + 1} completado.")
         except Exception as e:
             bot.send_message(chat_id, f"❌ Error en MAIL {i + 1}: {e}")
@@ -231,7 +284,6 @@ def handle_botspam_sms(call):
     user_id = call.from_user.id
     encontrado = False
 
-    # Verificar si el usuario está registrado y tiene al menos 2 créditos
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             for line in f:
@@ -258,7 +310,6 @@ def procesar_botspam_sms(message):
     numero = message.text.strip()
     user_id = message.from_user.id
 
-    # Validar formato numérico básico
     if not numero.isdigit() or len(numero) < 8:
         bot.send_message(message.chat.id, "❌ Ingresa un número válido (solo dígitos, mínimo 8).")
         return
@@ -288,7 +339,6 @@ def procesar_repeticiones_sms(message, numero):
 
     costo_total = repeticiones * 2
 
-    # Leer créditos del usuario
     creditos_actuales = 0
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
@@ -306,7 +356,6 @@ def procesar_repeticiones_sms(message, numero):
         )
         return
 
-    # Descontar créditos
     actualizar_creditos(user_id, -costo_total)
 
     bot.send_message(
@@ -325,9 +374,7 @@ def ejecutar_proceso_sms(chat_id, numero, repeats=1):
 
     for i in range(repeats):
         try:
-            # Ejecuta el archivo SMS.py (debe estar en la misma carpeta)
             os.system(f'python SMS.py "{numero}"')
-
             bot.send_message(chat_id, f"✅ SMS {i + 1} completado.")
         except Exception as e:
             bot.send_message(chat_id, f"❌ Error en SMS {i + 1}: {e}")
@@ -458,7 +505,6 @@ def modificar_creditos(message):
 
         signo = "+" if cantidad > 0 else ""
 
-        # Confirmación detallada para el Administrador
         bot.send_message(
             message.chat.id,
             f"✅ **Operación exitosa**\n\n"
@@ -468,7 +514,6 @@ def modificar_creditos(message):
             parse_mode="Markdown"
         )
 
-        # 📩 Avisar al usuario automáticamente
         if target_uid:
             try:
                 if cantidad > 0:
@@ -517,7 +562,7 @@ def listar_usuarios(message):
 
 
 # ===========================
-# /anuncio (solo admins) - Comando directo /anuncio <texto>
+# /anuncio (solo admins)
 # ===========================
 @bot.message_handler(commands=["anuncio"])
 def anuncio_directo(message):
